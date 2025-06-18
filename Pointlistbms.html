@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hướng dẫn Chọn I/O List và Giải thuật Điều khiển BMS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+        }
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 1.5rem;
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background-color: #4A90E2; /* Primary blue */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #357ABD; /* Darker blue */
+        }
+        .btn-secondary {
+            background-color: #e2e8f0; /* Light gray */
+            color: #2d3748; /* Dark gray text */
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e0; /* Medium gray */
+        }
+         .btn-info {
+            background-color: #38b2ac; /* Teal */
+            color: white;
+        }
+        .btn-info:hover {
+            background-color: #2c9d97; /* Darker Teal */
+        }
+        .card {
+            background-color: #f9fafb; /* Very light gray */
+            border: 1px solid #e5e7eb; /* Light border */
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .input-field {
+            width: 100%;
+            padding: 0.5rem;
+            border: 1px solid #d1d5db; /* Gray border */
+            border-radius: 6px;
+            margin-top: 0.25rem;
+        }
+        select.input-field { /* Specific styling for select */
+            padding-right: 2.5rem; /* Make space for arrow */
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        h1, h2, h3 {
+            color: #1a202c; /* Very dark gray / almost black */
+        }
+        label {
+            color: #4a5568; /* Medium-dark gray */
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4A90E2; /* Primary blue for scrollbar thumb */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #357ABD; /* Darker blue on hover */
+        }
+        /* Styles for dynamically added items */
+        .dynamic-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        .dynamic-item input, .dynamic-item textarea { /* Applied to textarea as well */
+            flex-grow: 1;
+            margin-right: 0.5rem;
+        }
+        .dynamic-item textarea {
+            min-height: 40px; /* Ensure textarea is visible */
+        }
+        .remove-btn {
+            background-color: #ef4444; /* Red */
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            flex-shrink: 0; /* Prevent button from shrinking */
+        }
+        .remove-btn:hover {
+            background-color: #dc2626; /* Darker red */
+        }
+        .add-btn {
+            background-color: #22c55e; /* Green */
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            margin-top: 0.5rem;
+        }
+        .add-btn:hover {
+            background-color: #16a34a; /* Darker green */
+        }
+        .summary-totals-card {
+            background-color: #e6fffa; /* Light teal background */
+            border: 1px solid #9ae6b4; /* Light green border */
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+        .equipment-type-totals-card {
+             background-color: #ebf8ff; /* Light blue background for specific type totals */
+            border: 1px solid #90cdf4; /* Light blue border */
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Hướng dẫn Chọn I/O List và Giải thuật Điều khiển BMS</h1>
+            <p class="text-gray-600 mt-2">Công cụ hỗ trợ thiết kế Hệ thống Quản lý Tòa nhà</p>
+        </header>
+
+        <div id="app-content">
+            </div>
+
+        <div id="navigation-buttons" class="mt-8 flex justify-between">
+            </div>
+    </div>
+
+    <script>
+        // --- Dữ liệu dựa trên PDF và kiến thức BMS phổ thông ---
+        const bmsData = {
+            subsystems: [
+                { id: 'hvac', name: 'Hệ thống Điều hòa không khí & Thông gió (HVAC)' },
+                { id: 'lighting', name: 'Hệ thống Chiếu sáng' },
+                { id: 'power', name: 'Hệ thống Quản lý Điện năng' },
+                { id: 'security', name: 'Hệ thống An ninh' },
+                { id: 'fire_alarm', name: 'Hệ thống Báo cháy' },
+            ],
+            equipmentBySubsystem: {
+                hvac: [
+                    { id: 'ahu', name: 'Bộ xử lý không khí (AHU)' },
+                    { id: 'fcu', name: 'Dàn quạt lạnh (FCU)' },
+                    { id: 'vav', name: 'Hộp điều khiển lưu lượng gió thay đổi (VAV Box)' },
+                    { id: 'chiller', name: 'Máy làm lạnh (Chiller)' },
+                    { id: 'pump', name: 'Bơm (Pump)' },
+                    { id: 'fan', name: 'Quạt (Fan/Exhaust Fan)' },
+                    { id: 'cooling_tower', name: 'Tháp giải nhiệt (Cooling Tower)' },
+                ],
+                lighting: [
+                    { id: 'lighting_circuit', name: 'Mạch chiếu sáng (Lighting Circuit)' },
+                    { id: 'dimmer', name: 'Bộ điều chỉnh độ sáng (Dimmer)' },
+                    { id: 'occupancy_sensor_light', name: 'Cảm biến hiện diện (cho chiếu sáng)' },
+                ],
+                power: [
+                    { id: 'power_meter', name: 'Đồng hồ điện (Power Meter)' },
+                    { id: 'circuit_breaker', name: 'Máy cắt (Circuit Breaker)' },
+                    { id: 'generator', name: 'Máy phát điện (Generator)' },
+                ],
+                security: [
+                    { id: 'access_control_reader', name: 'Đầu đọc thẻ/Vân tay (Access Control Reader)' },
+                    { id: 'door_contact', name: 'Công tắc từ cửa (Door Contact)' },
+                    { id: 'motion_sensor_security', name: 'Cảm biến chuyển động (an ninh)' },
+                    { id: 'cctv_camera', name: 'Camera quan sát (CCTV)' },
+                ],
+                fire_alarm: [
+                    { id: 'smoke_detector', name: 'Đầu báo khói (Smoke Detector)' },
+                    { id: 'heat_detector', name: 'Đầu báo nhiệt (Heat Detector)' },
+                    { id: 'manual_call_point', name: 'Nút nhấn khẩn (Manual Call Point)' },
+                    { id: 'fire_alarm_panel', name: 'Tủ trung tâm báo cháy (Fire Alarm Panel)' },
+                ]
+            },
+            equipmentDetails: {
+                ahu: {
+                    name: 'Bộ xử lý không khí (AHU)',
+                    commonIO: {
+                        di: [
+                            { name: 'Trạng thái quạt cấp (Supply Fan Status)', desc: 'Từ công tắc tơ hoặc rơ le dòng của quạt cấp (52X)' },
+                            { name: 'Trạng thái quạt hồi (Return Fan Status)', desc: 'Từ công tắc tơ hoặc rơ le dòng của quạt hồi (nếu có)' },
+                            { name: 'Trạng thái lọc bẩn (Dirty Filter Status)', desc: 'Từ công tắc chênh áp qua lọc (dPS)' },
+                            { name: 'Báo động nhiệt độ thấp/chống đông (Frost Protection Alarm)', desc: 'Từ cảm biến nhiệt độ gắn trên dàn lạnh' },
+                            { name: 'Tín hiệu báo cháy (Fire Alarm Signal)', desc: 'Từ hệ thống báo cháy, dừng AHU khi có cháy' }
+                        ],
+                        do: [
+                            { name: 'Điều khiển chạy/dừng quạt cấp (Supply Fan Start/Stop)', desc: 'Tới cuộn hút công tắc tơ quạt cấp (CX, TX)' },
+                            { name: 'Điều khiển chạy/dừng quạt hồi (Return Fan Start/Stop)', desc: 'Tới cuộn hút công tắc tơ quạt hồi (nếu có)' },
+                        ],
+                        ai: [
+                            { name: 'Nhiệt độ khí cấp (Supply Air Temperature - TED)', desc: 'Cảm biến nhiệt độ ống gió khí cấp', unit: '°C' },
+                            { name: 'Nhiệt độ khí hồi (Return Air Temperature - TE/THE)', desc: 'Cảm biến nhiệt độ phòng hoặc ống gió khí hồi', unit: '°C' },
+                            { name: 'Độ ẩm khí hồi (Return Air Humidity - HE/THE)', desc: 'Cảm biến độ ẩm phòng hoặc ống gió khí hồi', unit: '%' },
+                            { name: 'Nhiệt độ khí trời (Outdoor Air Temperature - TE)', desc: 'Cảm biến nhiệt độ ngoài trời', unit: '°C' },
+                            { name: 'Nồng độ CO2 khí hồi/phòng (CO2 Level)', desc: 'Cảm biến CO2 trong phòng hoặc ống gió hồi', unit: 'ppm' }
+                        ],
+                        ao: [
+                            { name: 'Điều khiển van nước lạnh (Cooling Coil Valve - MV)', desc: 'Van 2 ngả hoặc 3 ngả, tín hiệu 0-10VDC hoặc 4-20mA', unit: '%' },
+                            { name: 'Điều khiển van nước nóng (Heating Coil Valve - MV)', desc: 'Van 2 ngả hoặc 3 ngả, tín hiệu 0-10VDC hoặc 4-20mA', unit: '%' },
+                            { name: 'Điều khiển van gió tươi (Fresh Air Damper - MDF)', desc: 'Động cơ van gió, tín hiệu 0-10VDC', unit: '%' },
+                            { name: 'Điều khiển van gió hồi (Return Air Damper - MDF)', desc: 'Động cơ van gió, tín hiệu 0-10VDC', unit: '%' },
+                            { name: 'Điều khiển van gió thải (Exhaust Air Damper - MDF)', desc: 'Động cơ van gió, tín hiệu 0-10VDC', unit: '%' },
+                            { name: 'Điều khiển tốc độ quạt (Fan Speed Control - VSD/INV)', desc: 'Tín hiệu 0-10VDC hoặc 4-20mA tới biến tần', unit: '%' },
+                            { name: 'Điều khiển van phun ẩm (Humidifier Valve - BAV)', desc: 'Tín hiệu 0-10VDC hoặc On/Off', unit: '%' }
+                        ]
+                    },
+                    commonAlgorithms: [
+                        { name: 'Điều khiển nhiệt độ khí cấp (Supply Air Temperature Control)', desc: 'Sử dụng PID, duy trì nhiệt độ khí cấp theo setpoint bằng cách điều khiển van nước lạnh/nóng, dàn DX.' },
+                        { name: 'Điều khiển nhiệt độ/độ ẩm phòng (Room Temperature/Humidity Control)', desc: 'Sử dụng PID, duy trì nhiệt độ/độ ẩm phòng theo setpoint bằng cách điều chỉnh setpoint khí cấp hoặc trực tiếp các thiết bị.' },
+                        { name: 'Điều khiển thông gió theo CO2 (CO2 Demand Control Ventilation)', desc: 'Điều khiển van gió tươi dựa trên nồng độ CO2 đo được để đảm bảo chất lượng không khí.' },
+                        { name: 'Điều khiển tiết kiệm năng lượng (Economizer Control)', desc: 'So sánh enthalpy/nhiệt độ khí trời và khí hồi để ưu tiên lấy gió tươi làm mát khi điều kiện cho phép.' },
+                        { name: 'Khởi động/Dừng tối ưu (Optimal Start/Stop)', desc: 'Tính toán thời điểm khởi động/dừng AHU sớm/trễ để đạt điều kiện tiện nghi đúng giờ và tiết kiệm năng lượng.' },
+                        { name: 'Khóa liên động (Interlocks)', desc: 'Ví dụ: Quạt phải chạy trước khi van nước mở, dừng AHU khi có tín hiệu báo cháy.' },
+                        { name: 'Cảnh báo và giám sát (Alarms & Monitoring)', desc: 'Cảnh báo lọc bẩn, lỗi quạt, nhiệt độ quá thấp/cao.' }
+                    ]
+                },
+                fcu: {
+                    name: 'Dàn quạt lạnh (FCU)',
+                    commonIO: {
+                        di: [ { name: 'Tín hiệu Thermostat (Thermostat Call)', desc: 'Yêu cầu làm lạnh/sưởi từ thermostat phòng (nếu dùng thermostat cơ)' } ],
+                        do: [ { name: 'Điều khiển tốc độ quạt (Fan Speed - Low/Med/High)', desc: 'Rơ le điều khiển các cấp tốc độ quạt' }, { name: 'Điều khiển van nước lạnh/nóng (Valve Control On/Off)', desc: 'Rơ le đóng/mở van nước (nếu van on/off)' } ],
+                        ai: [ { name: 'Nhiệt độ phòng (Room Temperature - TE)', desc: 'Từ cảm biến nhiệt độ tích hợp hoặc gắn tường', unit: '°C' } ],
+                        ao: [ { name: 'Điều khiển van nước lạnh/nóng (Modulating Valve - MV)', desc: 'Tín hiệu 0-10VDC cho van tỉ lệ', unit: '%' } ]
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển nhiệt độ phòng (Room Temperature Control)', desc: 'Duy trì nhiệt độ phòng theo setpoint bằng cách điều khiển van nước và tốc độ quạt.' }, { name: 'Chuyển đổi chế độ Nóng/Lạnh (Heating/Cooling Mode Changeover)', desc: 'Dựa trên tín hiệu từ BMS hoặc nhiệt độ nước cấp.' } ]
+                },
+                vav: {
+                    name: 'Hộp điều khiển lưu lượng gió thay đổi (VAV Box)',
+                    commonIO: {
+                        di: [ { name: 'Cảm biến hiện diện (Occupancy Sensor)', desc: 'Phát hiện có người trong phòng để điều chỉnh setpoint/lưu lượng.' } ],
+                        do: [ { name: 'Điều khiển dàn điện trở sưởi phụ (Reheat Coil On/Off)', desc: 'Nếu VAV có sưởi phụ bằng điện trở.'} ],
+                        ai: [ { name: 'Nhiệt độ phòng (Room Temperature - TE)', desc: 'Từ cảm biến nhiệt độ phòng của VAV', unit: '°C' }, { name: 'Lưu lượng khí cấp thực tế (Actual Airflow)', desc: 'Từ cảm biến lưu lượng tích hợp trong VAV', unit: 'CFM/L/s' } ],
+                        ao: [ { name: 'Điều khiển van gió (Damper Actuator - MD)', desc: 'Tín hiệu 0-10VDC điều khiển độ mở van gió của VAV', unit: '%' } ]
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển nhiệt độ phòng (Room Temperature Control)', desc: 'Duy trì nhiệt độ phòng bằng cách điều chỉnh độ mở van gió (lưu lượng khí cấp).' }, { name: 'Điều khiển sưởi phụ (Reheat Control)', desc: 'Kích hoạt sưởi phụ nếu nhiệt độ phòng thấp hơn setpoint sưởi.' }, { name: 'Điều khiển lưu lượng tối thiểu/tối đa (Min/Max Airflow Control)', desc: 'Giữ lưu lượng trong giới hạn cho phép để đảm bảo thông gió và tránh ồn.' } ]
+                },
+                chiller: {
+                    name: 'Máy làm lạnh (Chiller)',
+                    commonIO: {
+                        di: [ { name: 'Trạng thái chạy/dừng (Chiller Run Status)', desc: 'Từ máy làm lạnh' }, { name: 'Trạng thái lỗi chung (Common Fault Alarm)', desc: 'Từ máy làm lạnh' }, { name: 'Trạng thái công tắc dòng chảy nước lạnh (Chilled Water Flow Switch Status)', desc: 'Đảm bảo có dòng chảy trước khi chiller khởi động' } ],
+                        do: [ { name: 'Lệnh chạy/dừng (Chiller Start/Stop Command)', desc: 'Tới máy làm lạnh' }, { name: 'Reset lỗi (Fault Reset)', desc: 'Gửi lệnh reset lỗi từ xa' } ],
+                        ai: [ { name: 'Nhiệt độ nước lạnh vào (Entering Chilled Water Temperature - TEW)', desc: 'Từ cảm biến trên đường ống', unit: '°C' }, { name: 'Nhiệt độ nước lạnh ra (Leaving Chilled Water Temperature - TEW)', desc: 'Từ cảm biến trên đường ống', unit: '°C' }, { name: 'Nhiệt độ nước giải nhiệt vào (Entering Condenser Water Temperature - TEW)', desc: 'Từ cảm biến trên đường ống', unit: '°C' }, { name: 'Nhiệt độ nước giải nhiệt ra (Leaving Condenser Water Temperature - TEW)', desc: 'Từ cảm biến trên đường ống', unit: '°C' }, { name: 'Tải hoạt động (Operating Load/Capacity)', desc: 'Từ máy làm lạnh (nếu có)', unit: '%' } ],
+                        ao: [ { name: 'Setpoint nhiệt độ nước lạnh ra (Leaving Chilled Water Temperature Setpoint)', desc: 'Gửi tới máy làm lạnh', unit: '°C' }, { name: 'Giới hạn tải (Capacity Limit)', desc: 'Gửi tới máy làm lạnh', unit: '%' } ]
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển nhiệt độ nước lạnh ra (Leaving Chilled Water Temperature Control)', desc: 'Chiller tự điều khiển, BMS gửi setpoint.' }, { name: 'Điều khiển tuần tự Chiller (Chiller Sequencing)', desc: 'Khởi động/dừng các chiller dựa trên tải, tối ưu hóa hiệu suất (Lead-Lag, Equal Run Time).' }, { name: 'Reset setpoint nhiệt độ nước lạnh (Chilled Water Setpoint Reset)', desc: 'Điều chỉnh setpoint dựa trên tải hoặc nhiệt độ khí trời để tiết kiệm năng lượng.' } ]
+                },
+                pump: {
+                    name: 'Bơm (Pump)',
+                    commonIO: {
+                        di: [ { name: 'Trạng thái chạy/dừng (Pump Run Status)', desc: 'Từ công tắc tơ hoặc rơ le dòng' }, { name: 'Trạng thái lỗi (Pump Fault Status)', desc: 'Từ thiết bị bảo vệ bơm' }, { name: 'Trạng thái công tắc dòng chảy (Flow Switch Status - tùy chọn)', desc: 'Xác nhận có dòng chảy khi bơm chạy' } ],
+                        do: [ { name: 'Lệnh chạy/dừng (Pump Start/Stop Command)', desc: 'Tới cuộn hút công tắc tơ bơm' } ],
+                        ai: [ { name: 'Chênh áp qua bơm (Differential Pressure - dPEW)', desc: 'Đo chênh áp hai đầu bơm (cho bơm biến tần)', unit: 'kPa/bar' } ],
+                        ao: [ { name: 'Điều khiển tốc độ bơm (Pump Speed Control - VSD/INV)', desc: 'Tín hiệu 0-10VDC hoặc 4-20mA tới biến tần', unit: '%' } ]
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển bơm tuần tự (Pump Sequencing)', desc: 'Cho hệ thống nhiều bơm (Lead-Lag, Standby).' }, { name: 'Điều khiển bơm biến tần (VSD Pump Control)', desc: 'Duy trì chênh áp hoặc lưu lượng không đổi bằng cách điều chỉnh tốc độ bơm.' } ]
+                },
+                fan: {
+                    name: 'Quạt (Fan/Exhaust Fan)',
+                    commonIO: {
+                        di: [ { name: 'Trạng thái chạy/dừng (Fan Run Status)', desc: 'Từ công tắc tơ hoặc rơ le dòng' }, { name: 'Trạng thái lỗi (Fan Fault Status)', desc: 'Từ thiết bị bảo vệ quạt' } ],
+                        do: [ { name: 'Lệnh chạy/dừng (Fan Start/Stop Command)', desc: 'Tới cuộn hút công tắc tơ quạt' } ],
+                        ai: [ { name: 'Lưu lượng gió (Airflow - nếu có cảm biến)', desc: 'Cảm biến lưu lượng gió', unit: 'L/s, m3/h' }, { name: 'Nồng độ khí độc (e.g., CO for garage fan)', desc: 'Cảm biến khí CO, NO2, etc.', unit: 'ppm'} ],
+                        ao: [ { name: 'Điều khiển tốc độ quạt (Fan Speed Control - VSD/INV)', desc: 'Tín hiệu 0-10VDC hoặc 4-20mA tới biến tần', unit: '%' } ]
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển theo lịch (Schedule Control)', desc: 'Chạy/dừng quạt theo lịch đặt trước.' }, { name: 'Điều khiển theo cảm biến (Sensor-based Control)', desc: 'Ví dụ: Quạt thông gió tầng hầm chạy dựa trên nồng độ CO.' }, { name: 'Điều khiển tốc độ quạt (VSD Fan Control)', desc: 'Duy trì áp suất tĩnh ống gió hoặc theo tín hiệu từ cảm biến (CO2, nhiệt độ).' } ]
+                },
+                cooling_tower: {
+                    name: 'Tháp giải nhiệt (Cooling Tower)',
+                    commonIO: {
+                        di: [ { name: 'Trạng thái chạy/dừng quạt (Fan Run Status)', desc: 'Từ công tắc tơ quạt tháp' }, { name: 'Trạng thái lỗi quạt (Fan Fault Status)', desc: 'Từ bảo vệ quạt' }, { name: 'Mức nước thấp/cao (Low/High Water Level)', desc: 'Từ cảm biến mức nước trong bể tháp' } ],
+                        do: [ { name: 'Lệnh chạy/dừng quạt (Fan Start/Stop Command)', desc: 'Tới công tắc tơ quạt' }, { name: 'Điều khiển van xả đáy (Blowdown Valve Control)', desc: 'On/Off hoặc theo thời gian' }, { name: 'Điều khiển van cấp nước bù (Makeup Water Valve Control)', desc: 'On/Off dựa trên cảm biến mức' } ],
+                        ai: [ { name: 'Nhiệt độ nước vào tháp (Entering Water Temperature - TEW)', desc: 'Từ máy làm lạnh', unit: '°C' }, { name: 'Nhiệt độ nước ra tháp (Leaving Water Temperature - TEW)', desc: 'Nước đã được giải nhiệt', unit: '°C' } ],
+                        ao: [ { name: 'Điều khiển tốc độ quạt (Fan Speed Control - VSD)', desc: 'Nếu quạt tháp dùng biến tần', unit: '%' } ]
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển nhiệt độ nước ra (Leaving Water Temperature Control)', desc: 'Duy trì nhiệt độ nước ra tháp theo setpoint bằng cách điều khiển quạt (on/off, tốc độ).' }, { name: 'Điều khiển Bypass tháp (Tower Bypass Control)', desc: 'Khi nhiệt độ khí trời thấp, nước có thể bypass tháp.' } ]
+                },
+                lighting_circuit: {
+                    name: 'Mạch chiếu sáng (Lighting Circuit)',
+                    commonIO: {
+                        di: [ { name: 'Trạng thái contactor/rơ le (Contactor/Relay Status)', desc: 'Xác nhận trạng thái thực tế của mạch đèn' } ],
+                        do: [ { name: 'Điều khiển Bật/Tắt (On/Off Control)', desc: 'Tới cuộn hút contactor hoặc rơ le điều khiển mạch đèn' } ],
+                        ai: [ { name: 'Cảm biến ánh sáng (Lux Sensor - nếu có)', desc: 'Đo cường độ ánh sáng tự nhiên để điều chỉnh', unit: 'lux' } ],
+                        ao: []
+                    },
+                    commonAlgorithms: [ { name: 'Điều khiển theo lịch (Schedule Control)', desc: 'Bật/tắt đèn theo lịch đặt trước (giờ làm việc, ngày nghỉ).' }, { name: 'Điều khiển theo cảm biến hiện diện (Occupancy Sensor Control)', desc: 'Bật đèn khi có người và tắt khi không có người.' }, { name: 'Điều khiển theo cảm biến ánh sáng (Daylight Harvesting)', desc: 'Giảm độ sáng đèn nhân tạo khi ánh sáng tự nhiên đủ.' } ]
+                },
+                power_meter: {
+                    name: 'Đồng hồ điện (Power Meter)',
+                    commonIO: { di: [], do: [], ai: [ {name: 'Điện năng tiêu thụ (Energy Consumption)', desc: 'kWh', unit: 'kWh'}, {name: 'Công suất tức thời (Instantaneous Power)', desc: 'kW', unit: 'kW'} ], ao: []},
+                    commonAlgorithms: [{name: 'Giám sát năng lượng (Energy Monitoring)', desc: 'Thu thập và hiển thị dữ liệu tiêu thụ điện.'}]
+                },
+                access_control_reader: {
+                    name: 'Đầu đọc thẻ/Vân tay',
+                    commonIO: { di: [{name: 'Trạng thái cửa (Door Status)', desc: 'Từ công tắc từ'}], do: [{name: 'Mở khóa cửa (Unlock Door)', desc: 'Tới khóa điện'}], ai: [], ao: []},
+                    commonAlgorithms: [{name: 'Kiểm soát ra vào (Access Control)', desc: 'Xác thực và cho phép/từ chối truy cập.'}]
+                },
+                smoke_detector: {
+                    name: 'Đầu báo khói',
+                    commonIO: { di: [{name: 'Tín hiệu báo cháy (Fire Alarm Signal)', desc: 'Báo động khi phát hiện khói'}], do: [], ai: [], ao: []},
+                    commonAlgorithms: [{name: 'Phát hiện khói và báo động (Smoke Detection & Alarm)', desc: 'Kích hoạt báo động và các hành động liên quan (dừng HVAC, kích hoạt thông gió hút khói).'}]
+                }
+            }
+        };
+
+        // --- Trạng thái ứng dụng ---
+        let currentStep = 0; // 0: subsystem, 1: equipment, 2: io_config, 3: summary
+        let userConfig = {
+            subsystemId: null,
+            subsystemName: '',
+            equipment: [] 
+        };
+        let currentEquipmentConfigIndex = -1; 
+
+        // --- DOM Elements ---
+        const appContent = document.getElementById('app-content');
+        const navButtons = document.getElementById('navigation-buttons');
+
+        // --- Hàm Render ---
+        function renderSubsystemSelection() {
+            currentStep = 0;
+            let html = `<h2 class="text-2xl font-semibold mb-6 text-gray-700">Bước 1: Chọn Hệ thống con của BMS</h2>`;
+            html += `<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+            bmsData.subsystems.forEach(subsystem => {
+                html += `
+                    <button onclick="selectSubsystem('${subsystem.id}', '${subsystem.name}')" 
+                            class="btn btn-primary w-full text-left p-4 shadow-md hover:shadow-lg">
+                        ${subsystem.name}
+                    </button>`;
+            });
+            html += `</div>`;
+            appContent.innerHTML = html;
+            renderNavButtons();
+        }
+
+        function renderEquipmentSelection() {
+            currentStep = 1;
+            const subsystem = bmsData.equipmentBySubsystem[userConfig.subsystemId];
+            if (!subsystem) {
+                appContent.innerHTML = `<p class="text-red-500">Lỗi: Không tìm thấy thiết bị cho hệ thống này.</p>`;
+                renderNavButtons();
+                return;
+            }
+
+            let html = `
+                <h2 class="text-2xl font-semibold mb-2 text-gray-700">Bước 2: Chọn Thiết bị cho ${userConfig.subsystemName}</h2>
+                <p class="text-gray-600 mb-6">Chọn các thiết bị bạn muốn cấu hình I/O và giải thuật điều khiển.</p>
+                <div id="selected-equipment-list" class="mb-6">
+                    <h3 class="text-xl font-medium mb-3 text-gray-700">Thiết bị đã chọn:</h3>
+                    ${renderSelectedEquipmentList()}
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">`;
+
+            subsystem.forEach(equip => {
+                html += `
+                    <div class="card p-4 shadow hover:shadow-md">
+                        <h3 class="font-semibold text-lg text-blue-600">${equip.name}</h3>
+                        <button onclick="addEquipment('${equip.id}', '${equip.name}')" class="mt-3 btn btn-secondary btn-sm text-xs">Thêm thiết bị này</button>
+                    </div>`;
+            });
+            html += `</div>`;
+            appContent.innerHTML = html;
+            renderNavButtons();
+        }
+
+        function renderSelectedEquipmentList() {
+            if (userConfig.equipment.length === 0) {
+                return '<p class="text-gray-500">Chưa có thiết bị nào được chọn.</p>';
+            }
+            let listHtml = '<ul class="list-disc pl-5 space-y-2">';
+            userConfig.equipment.forEach((eq, index) => {
+                listHtml += `
+                    <li class="text-gray-700">
+                        ${eq.instanceName} (${eq.name})
+                        <button onclick="removeEquipment(${index})" class="ml-2 text-red-500 hover:text-red-700 text-xs">[Xóa]</button>
+                        <button onclick="navigateToEquipmentConfig(${index})" class="ml-2 text-blue-500 hover:text-blue-700 text-xs">[Cấu hình]</button>
+                    </li>`;
+            });
+            listHtml += '</ul>';
+            return listHtml;
+        }
+
+        function renderEquipmentConfig() {
+            currentStep = 2;
+            const equipment = userConfig.equipment[currentEquipmentConfigIndex];
+            if (!equipment) {
+                appContent.innerHTML = `<p class="text-red-500">Lỗi: Không tìm thấy thiết bị để cấu hình.</p>`;
+                renderNavButtons();
+                return;
+            }
+            const details = bmsData.equipmentDetails[equipment.id] || { commonIO: { di: [], do: [], ai: [], ao: [] }, commonAlgorithms: [] };
+
+            let html = `
+                <h2 class="text-2xl font-semibold mb-6 text-gray-700">Bước 3: Cấu hình I/O và Giải thuật cho ${equipment.instanceName} (${equipment.name})</h2>
+                
+                <div class="mb-8 p-6 bg-gray-50 rounded-lg shadow">
+                    <h3 class="text-xl font-medium mb-4 text-blue-700">Danh sách Điểm I/O:</h3>
+                    ${renderIOSection('DI', 'Đầu vào Số (Digital Inputs)', equipment.io.di, details.commonIO.di)}
+                    ${renderIOSection('DO', 'Đầu ra Số (Digital Outputs)', equipment.io.do, details.commonIO.do)}
+                    ${renderIOSection('AI', 'Đầu vào Tương tự (Analog Inputs)', equipment.io.ai, details.commonIO.ai)}
+                    ${renderIOSection('AO', 'Đầu ra Tương tự (Analog Outputs)', equipment.io.ao, details.commonIO.ao)}
+                </div>
+
+                <div class="p-6 bg-gray-50 rounded-lg shadow">
+                    <h3 class="text-xl font-medium mb-4 text-blue-700">Giải thuật Điều khiển:</h3>
+                    ${renderAlgorithmSection(equipment.algorithms, details.commonAlgorithms)}
+                </div>
+            `;
+            appContent.innerHTML = html;
+            renderNavButtons();
+        }
+
+        function renderIOSection(type, title, currentPoints, commonPoints) {
+            let sectionHtml = `<div class="mb-6 card"><h4 class="font-semibold text-lg mb-3 text-gray-800">${title}:</h4>`;
+            sectionHtml += `<div id="${type.toLowerCase()}-list">`; 
+            (currentPoints || []).forEach((point, index) => {
+                sectionHtml += `
+                    <div class="dynamic-item border-b border-gray-200 py-2">
+                        <input type="text" value="${point.name}" class="input-field mr-2" placeholder="Tên điểm" onchange="updateIOPoint(${currentEquipmentConfigIndex}, '${type}', ${index}, 'name', this.value)">
+                        <input type="text" value="${point.desc}" class="input-field mr-2 flex-grow-[2]" placeholder="Mô tả" onchange="updateIOPoint(${currentEquipmentConfigIndex}, '${type}', ${index}, 'desc', this.value)">
+                        ${(type.toUpperCase() === 'AI' || type.toUpperCase() === 'AO') ? `<input type="text" value="${point.unit || ''}" class="input-field w-20 mr-2" placeholder="Đơn vị" onchange="updateIOPoint(${currentEquipmentConfigIndex}, '${type}', ${index}, 'unit', this.value)">` : ''}
+                        <button onclick="removeIOPoint(${currentEquipmentConfigIndex}, '${type}', ${index})" class="remove-btn">Xóa</button>
+                    </div>`;
+            });
+            sectionHtml += `</div>`;
+            sectionHtml += `<button onclick="addIOPoint(${currentEquipmentConfigIndex}, '${type}')" class="add-btn">Thêm điểm ${type}</button>`;
+            
+            if (commonPoints && commonPoints.length > 0) {
+                sectionHtml += `<div class="mt-4"><p class="text-sm text-gray-600 mb-1">Gợi ý các điểm ${type} thường gặp:</p><ul class="list-disc list-inside text-sm">`;
+                commonPoints.forEach(p => {
+                    sectionHtml += `<li class="text-gray-500">${p.name} <em class="text-gray-400">- ${p.desc} ${p.unit ? `(${p.unit})` : ''}</em></li>`;
+                });
+                sectionHtml += `</ul></div>`;
+            }
+            sectionHtml += `</div>`;
+            return sectionHtml;
+        }
+
+        function renderAlgorithmSection(currentAlgos, commonAlgos) {
+            let sectionHtml = `<div id="algorithm-list" class="mb-4">`;
+            (currentAlgos || []).forEach((algo, index) => { 
+                sectionHtml += `
+                    <div class="dynamic-item border-b border-gray-200 py-2">
+                        <input type="text" value="${algo.name}" class="input-field mr-2" placeholder="Tên giải thuật" onchange="updateAlgorithm(${currentEquipmentConfigIndex}, ${index}, 'name', this.value)">
+                        <textarea class="input-field mr-2 flex-grow-[2]" placeholder="Mô tả giải thuật" onchange="updateAlgorithm(${currentEquipmentConfigIndex}, ${index}, 'desc', this.value)">${algo.desc}</textarea>
+                        <button onclick="removeAlgorithm(${currentEquipmentConfigIndex}, ${index})" class="remove-btn">Xóa</button>
+                    </div>`;
+            });
+            sectionHtml += `</div>`;
+            sectionHtml += `<button onclick="addAlgorithm(${currentEquipmentConfigIndex})" class="add-btn">Thêm giải thuật</button>`;
+
+            if (commonAlgos && commonAlgos.length > 0) {
+                sectionHtml += `<div class="mt-4"><p class="text-sm text-gray-600 mb-1">Gợi ý các giải thuật thường gặp:</p><ul class="list-disc list-inside text-sm">`;
+                commonAlgos.forEach(a => {
+                    sectionHtml += `<li class="text-gray-500">${a.name} <em class="text-gray-400">- ${a.desc}</em></li>`;
+                });
+                sectionHtml += `</ul></div>`;
+            }
+            return sectionHtml;
+        }
+
+        function renderSummary() {
+            currentStep = 3;
+            let html = `<h2 class="text-2xl font-semibold mb-6 text-gray-700">Bước 4: Tổng hợp Danh sách I/O và Giải thuật Điều khiển</h2>`;
+            html += `<p class="text-gray-600 mb-4">Hệ thống con đã chọn: <strong>${userConfig.subsystemName}</strong></p>`;
+
+            if (userConfig.equipment.length === 0) {
+                html += `<p class="text-gray-500">Không có thiết bị nào được cấu hình.</p>`;
+            } else {
+                userConfig.equipment.forEach(eq => {
+                    html += `
+                        <div class="card mb-6 shadow-lg">
+                            <h3 class="text-xl font-medium mb-3 text-blue-700">${eq.instanceName} (${eq.name})</h3>
+                            <div class="mb-4">
+                                <h4 class="font-semibold text-gray-800">Điểm I/O:</h4>
+                                ${renderSummaryTableIO(eq.io)}
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">Giải thuật Điều khiển:</h4>
+                                ${renderSummaryList(eq.algorithms)}
+                            </div>
+                        </div>`;
+                });
+            }
+            // Section for calculating totals for a selected equipment type
+            html += `
+                <div class="equipment-type-totals-card">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Tính toán Tổng I/O theo Loại Thiết bị</h3>
+                    <div class="flex items-center mb-4">
+                        <label for="equipment-type-selector" class="mr-2 text-gray-700">Chọn loại thiết bị:</label>
+                        <select id="equipment-type-selector" class="input-field flex-grow rounded-md shadow-sm"></select>
+                        <button onclick="calculateAndDisplayTotalsForSelectedType()" class="btn btn-info ml-3">Tính Tổng cho Loại Đã Chọn</button>
+                    </div>
+                    <div id="selected-equipment-type-totals-display">
+                        <p class="text-gray-600 italic">Chọn một loại thiết bị và nhấn nút để xem tổng I/O.</p>
+                    </div>
+                </div>
+            `;
+            // Section for totals of ALL configured equipment in the subsystem
+            html += renderAllConfiguredEquipmentTotals();
+            
+            appContent.innerHTML = html;
+            populateEquipmentTypeSelector(); // Populate dropdown after HTML is in DOM
+            renderNavButtons();
+        }
+        
+        function populateEquipmentTypeSelector() {
+            const selector = document.getElementById('equipment-type-selector');
+            if (!selector) return;
+            selector.innerHTML = ''; // Clear existing options
+
+            const configuredTypes = new Map(); // Using a Map to store id and name
+            userConfig.equipment.forEach(eq => {
+                if (!configuredTypes.has(eq.id)) {
+                    configuredTypes.set(eq.id, eq.name);
+                }
+            });
+
+            if (configuredTypes.size === 0) {
+                const noEquipOption = document.createElement('option');
+                noEquipOption.value = "";
+                noEquipOption.textContent = "Không có thiết bị nào được cấu hình";
+                noEquipOption.disabled = true;
+                selector.appendChild(noEquipOption);
+                return;
+            }
+            
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "--- Chọn loại thiết bị ---";
+            selector.appendChild(defaultOption);
+
+            configuredTypes.forEach((name, id) => {
+                const option = document.createElement('option');
+                option.value = id;
+                option.textContent = name;
+                selector.appendChild(option);
+            });
+        }
+
+        window.calculateAndDisplayTotalsForSelectedType = function() {
+            const selector = document.getElementById('equipment-type-selector');
+            const displayDiv = document.getElementById('selected-equipment-type-totals-display');
+            if (!selector || !displayDiv) return;
+
+            const selectedTypeId = selector.value;
+            if (!selectedTypeId) {
+                displayDiv.innerHTML = `<p class="text-red-500 italic">Vui lòng chọn một loại thiết bị.</p>`;
+                return;
+            }
+
+            let totalDI = 0;
+            let totalDO = 0;
+            let totalAI = 0;
+            let totalAO = 0;
+            let equipmentCount = 0;
+            let selectedTypeName = selector.options[selector.selectedIndex].text;
+
+            userConfig.equipment.forEach(eq => {
+                if (eq.id === selectedTypeId) {
+                    equipmentCount++;
+                    totalDI += eq.io.di ? eq.io.di.length : 0;
+                    totalDO += eq.io.do ? eq.io.do.length : 0;
+                    totalAI += eq.io.ai ? eq.io.ai.length : 0;
+                    totalAO += eq.io.ao ? eq.io.ao.length : 0;
+                }
+            });
+            
+            let totalsHtml = `<h4 class="text-lg font-medium mb-2 text-gray-700">Tổng I/O cho ${selectedTypeName} (${equipmentCount} thiết bị):</h4>`;
+            if (equipmentCount > 0) {
+                totalsHtml += `
+                    <ul class="list-disc pl-5 space-y-1 text-gray-600">
+                        <li>Tổng số Điểm Đầu vào Số (DI): <strong>${totalDI}</strong></li>
+                        <li>Tổng số Điểm Đầu ra Số (DO): <strong>${totalDO}</strong></li>
+                        <li>Tổng số Điểm Đầu vào Tương tự (AI): <strong>${totalAI}</strong></li>
+                        <li>Tổng số Điểm Đầu ra Tương tự (AO): <strong>${totalAO}</strong></li>
+                    </ul>
+                    <p class="mt-2 text-sm text-gray-500">Thông tin này giúp bạn ước lượng số lượng kênh I/O cần thiết cho bộ điều khiển (DDC).</p>`;
+            } else {
+                totalsHtml += `<p class="text-gray-600 italic">Không có thiết bị loại '${selectedTypeName}' nào được cấu hình.</p>`;
+            }
+            displayDiv.innerHTML = totalsHtml;
+        }
+
+        function renderAllConfiguredEquipmentTotals() {
+            let totalDI = 0;
+            let totalDO = 0;
+            let totalAI = 0;
+            let totalAO = 0;
+            let equipmentCount = userConfig.equipment.length;
+
+            userConfig.equipment.forEach(eq => {
+                totalDI += eq.io.di ? eq.io.di.length : 0;
+                totalDO += eq.io.do ? eq.io.do.length : 0;
+                totalAI += eq.io.ai ? eq.io.ai.length : 0;
+                totalAO += eq.io.ao ? eq.io.ao.length : 0;
+            });
+            
+            let totalsHtml = `
+                <div class="summary-totals-card">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">Tổng hợp I/O cho Tất Cả Thiết Bị Đã Cấu Hình (${equipmentCount} thiết bị trong hệ thống ${userConfig.subsystemName}):</h3>`;
+            if (equipmentCount > 0) {
+                totalsHtml += `
+                    <ul class="list-disc pl-5 space-y-1 text-gray-700">
+                        <li>Tổng số Điểm Đầu vào Số (DI): <strong>${totalDI}</strong></li>
+                        <li>Tổng số Điểm Đầu ra Số (DO): <strong>${totalDO}</strong></li>
+                        <li>Tổng số Điểm Đầu vào Tương tự (AI): <strong>${totalAI}</strong></li>
+                        <li>Tổng số Điểm Đầu ra Tương tự (AO): <strong>${totalAO}</strong></li>
+                    </ul>
+                     <p class="mt-3 text-sm text-gray-600">Đây là tổng số I/O cho tất cả các thiết bị bạn đã cấu hình trong hệ thống con này.</p>`;
+            } else {
+                totalsHtml += `<p class="text-gray-600 italic">Chưa có thiết bị nào được cấu hình trong hệ thống ${userConfig.subsystemName}.</p>`;
+            }
+            totalsHtml += `</div>`;
+            return totalsHtml;
+        }
+
+
+        function renderSummaryTableIO(io) {
+            let tableHtml = '<div class="overflow-x-auto"><table class="min-w-full divide-y divide-gray-200 text-sm">';
+            tableHtml += `<thead class="bg-gray-100"><tr>
+                            <th class="px-4 py-2 text-left font-medium text-gray-600 uppercase tracking-wider">Loại</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-600 uppercase tracking-wider">Tên Điểm</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-600 uppercase tracking-wider">Mô tả</th>
+                            <th class="px-4 py-2 text-left font-medium text-gray-600 uppercase tracking-wider">Đơn vị</th>
+                         </tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
+
+            ['di', 'do', 'ai', 'ao'].forEach(typeKey => { 
+                if (io[typeKey] && io[typeKey].length > 0) {
+                    io[typeKey].forEach(point => {
+                        tableHtml += `<tr>
+                                        <td class="px-4 py-2 whitespace-nowrap text-gray-700">${typeKey.toUpperCase()}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-gray-700">${point.name}</td>
+                                        <td class="px-4 py-2 text-gray-600">${point.desc}</td>
+                                        <td class="px-4 py-2 whitespace-nowrap text-gray-600">${point.unit || '-'}</td>
+                                      </tr>`;
+                    });
+                }
+            });
+            tableHtml += '</tbody></table></div>';
+            if (Object.values(io).every(arr => arr.length === 0)) {
+                return '<p class="text-gray-500 italic">Không có điểm I/O nào được định nghĩa.</p>';
+            }
+            return tableHtml;
+        }
+
+        function renderSummaryList(items) {
+            if (!items || items.length === 0) { 
+                return '<p class="text-gray-500 italic">Không có mục nào.</p>';
+            }
+            let listHtml = '<ul class="list-disc pl-5 space-y-1 text-gray-700">';
+            items.forEach(item => {
+                listHtml += `<li><strong>${item.name}:</strong> ${item.desc}</li>`;
+            });
+            listHtml += '</ul>';
+            return listHtml;
+        }
+
+        function renderNavButtons() {
+            let buttonsHtml = '';
+            if (currentStep > 0) {
+                buttonsHtml += `<button onclick="navigateBack()" class="btn btn-secondary">Quay lại</button>`;
+            } else {
+                 buttonsHtml += `<div></div>`; 
+            }
+
+            if (currentStep < 3) {
+                 if (currentStep === 0 && !userConfig.subsystemId) { 
+                    buttonsHtml += `<div></div>`; 
+                 } else if (currentStep === 0 && userConfig.subsystemId) {
+                     buttonsHtml += `<button onclick="navigateNext()" class="btn btn-primary">Tiếp tục</button>`;
+                 } else if (currentStep === 1 && userConfig.equipment.length === 0) {
+                    buttonsHtml += `<button class="btn btn-primary opacity-50 cursor-not-allowed" disabled>Tiếp tục (Chọn thiết bị)</button>`;
+                 } else if (currentStep === 1 && userConfig.equipment.length > 0) {
+                     buttonsHtml += `<button onclick="navigateToNextUnconfiguredOrSummary()" class="btn btn-primary">Cấu hình thiết bị / Tới Tổng kết</button>`;
+                 } else if (currentStep === 2) {
+                     buttonsHtml += `<button onclick="navigateNext()" class="btn btn-primary">Tiếp tục / Tới Tổng kết</button>`;
+                 }
+            } else { 
+                buttonsHtml += `<button onclick="resetApp()" class="btn btn-primary">Bắt đầu lại</button>`;
+            }
+            navButtons.innerHTML = buttonsHtml;
+        }
+        
+        function isEquipmentConfigured(equipment) {
+            return (equipment.io.di.length + equipment.io.do.length + equipment.io.ai.length + equipment.io.ao.length + equipment.algorithms.length) > 0;
+        }
+
+        // --- Hàm Điều hướng và Cập nhật Trạng thái ---
+        window.selectSubsystem = function(subsystemId, subsystemName) {
+            userConfig.subsystemId = subsystemId;
+            userConfig.subsystemName = subsystemName;
+            userConfig.equipment = []; 
+            renderEquipmentSelection();
+        }
+
+        window.addEquipment = function(equipmentId, equipmentName) {
+            const instanceName = `${equipmentName}-${userConfig.equipment.filter(e => e.id === equipmentId).length + 1}`;
+            
+            const newEquipment = {
+                id: equipmentId,
+                name: equipmentName,
+                instanceName: instanceName,
+                io: { di: [], do: [], ai: [], ao: [] }, 
+                algorithms: [] 
+            };
+            
+            const details = bmsData.equipmentDetails[equipmentId];
+            if (details) {
+                if (details.commonIO) { 
+                    newEquipment.io.di = details.commonIO.di ? JSON.parse(JSON.stringify(details.commonIO.di)) : [];
+                    newEquipment.io.do = details.commonIO.do ? JSON.parse(JSON.stringify(details.commonIO.do)) : [];
+                    newEquipment.io.ai = details.commonIO.ai ? JSON.parse(JSON.stringify(details.commonIO.ai)) : [];
+                    newEquipment.io.ao = details.commonIO.ao ? JSON.parse(JSON.stringify(details.commonIO.ao)) : [];
+                }
+                newEquipment.algorithms = details.commonAlgorithms ? JSON.parse(JSON.stringify(details.commonAlgorithms)) : [];
+            }
+
+            userConfig.equipment.push(newEquipment);
+            renderEquipmentSelection(); 
+        }
+
+        window.removeEquipment = function(index) {
+            userConfig.equipment.splice(index, 1);
+            renderEquipmentSelection();
+        }
+        
+        window.navigateToNextUnconfiguredOrSummary = function() {
+             if (userConfig.equipment.length > 0) {
+                 currentEquipmentConfigIndex = 0; 
+                 renderEquipmentConfig();
+            } else {
+                 renderSummary(); 
+            }
+        }
+
+        window.navigateToEquipmentConfig = function(index) {
+            currentEquipmentConfigIndex = index;
+            renderEquipmentConfig();
+        }
+
+        window.addIOPoint = function(eqIndex, type) {
+            const lowerCaseType = type.toLowerCase();
+            const point = { name: '', desc: '' };
+            if (lowerCaseType === 'ai' || lowerCaseType === 'ao') point.unit = '';
+            
+            if (!userConfig.equipment[eqIndex].io[lowerCaseType]) {
+                 userConfig.equipment[eqIndex].io[lowerCaseType] = [];
+            }
+            userConfig.equipment[eqIndex].io[lowerCaseType].push(point);
+            renderEquipmentConfig();
+        }
+
+        window.removeIOPoint = function(eqIndex, type, pointIndex) {
+            const lowerCaseType = type.toLowerCase(); 
+            if (userConfig.equipment && 
+                userConfig.equipment[eqIndex] && 
+                userConfig.equipment[eqIndex].io && 
+                Array.isArray(userConfig.equipment[eqIndex].io[lowerCaseType])) { 
+                userConfig.equipment[eqIndex].io[lowerCaseType].splice(pointIndex, 1);
+                renderEquipmentConfig();
+            } else {
+                console.error("Error in removeIOPoint: Invalid path or type for IO array.", {
+                    eqIndex, type, pointIndex, lowerCaseType,
+                    ioObject: userConfig.equipment[eqIndex] ? userConfig.equipment[eqIndex].io : 'N/A',
+                    specificArray: userConfig.equipment[eqIndex] && userConfig.equipment[eqIndex].io ? userConfig.equipment[eqIndex].io[lowerCaseType] : 'N/A'
+                });
+            }
+        }
+
+        window.updateIOPoint = function(eqIndex, type, pointIndex, field, value) {
+            const lowerCaseType = type.toLowerCase(); 
+            if (userConfig.equipment && 
+                userConfig.equipment[eqIndex] && 
+                userConfig.equipment[eqIndex].io && 
+                userConfig.equipment[eqIndex].io[lowerCaseType] &&
+                userConfig.equipment[eqIndex].io[lowerCaseType][pointIndex]) {
+                userConfig.equipment[eqIndex].io[lowerCaseType][pointIndex][field] = value;
+            } else {
+                 console.error("Error in updateIOPoint: Invalid path or type for IO point.", {
+                    eqIndex, type, pointIndex, field, lowerCaseType
+                });
+            }
+        }
+
+        window.addAlgorithm = function(eqIndex) {
+            if (!userConfig.equipment[eqIndex].algorithms) userConfig.equipment[eqIndex].algorithms = [];
+            userConfig.equipment[eqIndex].algorithms.push({ name: '', desc: '' });
+            renderEquipmentConfig();
+        }
+        window.removeAlgorithm = function(eqIndex, algoIndex) {
+            if (userConfig.equipment && 
+                userConfig.equipment[eqIndex] && 
+                Array.isArray(userConfig.equipment[eqIndex].algorithms)) {
+                userConfig.equipment[eqIndex].algorithms.splice(algoIndex, 1);
+                renderEquipmentConfig();
+            } else {
+                 console.error("Error in removeAlgorithm: Invalid path for algorithms array.", { eqIndex });
+            }
+        }
+        window.updateAlgorithm = function(eqIndex, algoIndex, field, value) {
+             if (userConfig.equipment && 
+                userConfig.equipment[eqIndex] && 
+                userConfig.equipment[eqIndex].algorithms &&
+                userConfig.equipment[eqIndex].algorithms[algoIndex]) {
+                userConfig.equipment[eqIndex].algorithms[algoIndex][field] = value;
+            } else {
+                console.error("Error in updateAlgorithm: Invalid path for algorithm.", { eqIndex, algoIndex, field });
+            }
+        }
+        
+        window.navigateBack = function() {
+            if (currentStep === 1) renderSubsystemSelection();
+            else if (currentStep === 2) renderEquipmentSelection();
+            else if (currentStep === 3) {
+                if (currentEquipmentConfigIndex !== -1 && userConfig.equipment.length > 0) {
+                     renderEquipmentConfig(); 
+                } else {
+                     renderEquipmentSelection();
+                }
+            }
+        }
+
+        window.navigateNext = function() {
+            if (currentStep === 0 && userConfig.subsystemId) {
+                 renderEquipmentSelection();
+            } else if (currentStep === 1 && userConfig.equipment.length > 0) {
+                currentEquipmentConfigIndex = 0; 
+                renderEquipmentConfig();
+            } else if (currentStep === 2) {
+                if (currentEquipmentConfigIndex < userConfig.equipment.length - 1) {
+                    currentEquipmentConfigIndex++;
+                    renderEquipmentConfig();
+                } else {
+                    renderSummary();
+                }
+            }
+        }
+        
+        window.resetApp = function() {
+            currentStep = 0;
+            userConfig = {
+                subsystemId: null,
+                subsystemName: '',
+                equipment: []
+            };
+            currentEquipmentConfigIndex = -1;
+            renderSubsystemSelection();
+        }
+
+        // --- Render ban đầu ---
+        renderSubsystemSelection();
+    </script>
+</body>
+</html>
